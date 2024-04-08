@@ -322,7 +322,7 @@ def get_spepc(hps, filename):
     audio = load_audio(filename, int(hps.data.sampling_rate))
     audio = torch.FloatTensor(audio)
     audio_norm = audio
-    audio_norm = audio_norm.half().unsqueeze(0).to('cuda')  # Convert to Half tensor
+    audio_norm = audio_norm.unsqueeze(0).half().to('cuda')
     spec = spectrogram_torch(audio_norm, hps.data.filter_length, hps.data.sampling_rate, hps.data.hop_length,
                              hps.data.win_length, center=False)
     return spec
@@ -659,9 +659,9 @@ def vc_main(wav_path, text, language, prompt_wav, noise_scale=0.5):
             quantized, size=int(quantized.shape[-1] * 2), mode="nearest"
         )
     quantized = quantized
-    phones_tensor = torch.LongTensor(phones).half().to('cuda')
-    quantized_shape_tensor = torch.LongTensor([quantized.shape[-1]]).half().to('cuda')
-    phones_length_tensor = torch.LongTensor([len(phones)]).half().to('cuda')
+    phones_tensor = torch.LongTensor(phones)# .half().to('cuda')
+    quantized_shape_tensor = torch.LongTensor([quantized.shape[-1]])# .half().to('cuda')
+    phones_length_tensor = torch.LongTensor([len(phones)])# .half().to('cuda')
     ge = ge.half().to('cuda')
 
     _, m_p, logs_p, y_mask = vq_model.enc_p(
