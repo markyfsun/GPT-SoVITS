@@ -658,7 +658,7 @@ def vc_main(wav_path, text, language, prompt_wav, noise_scale=0.5):
         quantized = F.interpolate(
             quantized, size=int(quantized.shape[-1] * 2), mode="nearest"
         )
-    quantized = quantized
+    quantized = quantized.half().to('cuda')
     phones_tensor = torch.LongTensor(phones).half().to('cuda')
     quantized_shape_tensor = torch.LongTensor([quantized.shape[-1]]).half().to('cuda')
     phones_length_tensor = torch.LongTensor([len(phones)]).half().to('cuda')
