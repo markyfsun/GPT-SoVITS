@@ -322,7 +322,7 @@ def get_spepc(hps, filename):
     audio = load_audio(filename, int(hps.data.sampling_rate))
     audio = torch.FloatTensor(audio)
     audio_norm = audio
-    audio_norm = audio_norm.unsqueeze(0).to('cuda')
+    audio_norm = audio_norm.half().unsqueeze(0).to('cuda')  # Convert to Half tensor
     spec = spectrogram_torch(audio_norm, hps.data.filter_length, hps.data.sampling_rate, hps.data.hop_length,
                              hps.data.win_length, center=False)
     return spec
