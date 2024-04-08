@@ -672,6 +672,7 @@ def vc_main(wav_path, text, language, prompt_wav, noise_scale=0.5):
     z = vq_model.flow(z_p, y_mask, g=ge, reverse=True)
     o = vq_model.dec((z * y_mask)[:, :, :], g=ge)  # [B, D=1, T], torch.float32 (-1, 1)
     audio = o.detach().cpu().numpy()[0, 0]
+    print(f"{audio=}")
     max_audio = np.abs(audio).max()  # 简单防止16bit爆音
     if max_audio > 1:
         audio /= max_audio
