@@ -676,7 +676,7 @@ def vc_main(wav_path, text, language, prompt_wav, noise_scale=0.5):
     if max_audio > 1:
         audio /= max_audio
     audio_bytes = BytesIO()
-    sf.write(audio_bytes, (audio * 32768).astype(np.int16), hps.data.sampling_rate, 'PCM_16')
+    sf.write(audio_bytes, (audio * 32768).astype(np.int16), hps.data.sampling_rate, subtype='PCM_16', format='wav')
     return audio_bytes.getvalue()
 
 
