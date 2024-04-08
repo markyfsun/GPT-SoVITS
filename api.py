@@ -871,7 +871,7 @@ async def tts_endpoint(
 
 @app.get("/vc")
 async def vc_endpoint(
-        prompt_wav: byte,
+        prompt_wav: bytes,
         refer_wav_path: str = None,
         prompt_text: str = None,
         prompt_language: str = None,
