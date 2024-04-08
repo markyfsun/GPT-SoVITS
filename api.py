@@ -871,14 +871,14 @@ async def tts_endpoint(
 
 @app.get("/vc")
 async def vc_endpoint(
-        prompt_wav: bytes,
+        prompt_wav: UploadFile = File(...),
         refer_wav_path: str = None,
         prompt_text: str = None,
         prompt_language: str = None,
         noise_scale: float = 0.5,
 ):
     with tempfile.NamedTemporaryFile(suffix=".wav") as f:
-        f.write(prompt_wav)
+        f.write(await prompt_wav.read())
         f.flush()
         if not refer_wav_path.startswith('/'):
             refer_wav_path = os.path.join(g_config.wav_root, refer_wav_path)
