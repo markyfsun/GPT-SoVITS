@@ -659,8 +659,8 @@ def vc_main(wav_path, text, language, prompt_wav, noise_scale=0.5):
             quantized, size=int(quantized.shape[-1] * 2), mode="nearest"
         )
     _, m_p, logs_p, y_mask = vq_model.enc_p(
-        quantized, torch.LongTensor([quantized.shape[-1]]),
-        torch.LongTensor(phones)[None], torch.LongTensor([len(phones)]), ge
+        quantized.to('cuda'), torch.LongTensor([quantized.shape[-1]]).to('cuda'),
+        torch.LongTensor(phones)[None].to('cuda'), torch.LongTensor([len(phones)]).to('cuda'), ge.to('cuda')
     )
     z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
     z = vq_model.flow(z_p, y_mask, g=ge, reverse=True)
