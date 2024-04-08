@@ -868,7 +868,7 @@ async def tts_endpoint(
 ):
     return handle(refer_wav_path, prompt_text, prompt_language, text, text_language, cut_punc)
 
-@app.get("/vc")
+@app.post("/vc")
 async def vc_endpoint(
         prompt_wav: UploadFile = File(...),
         refer_wav_path: str = None,
