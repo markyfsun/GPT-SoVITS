@@ -669,9 +669,10 @@ def vc_main(wav_path, text, language, prompt_wav, noise_scale=0.5):
     max_audio = np.abs(audio).max()  # 简单防止16bit爆音
     if max_audio > 1:
         audio /= max_audio
-    audio_bytes = BytesIO()
-    sf.write(audio_bytes, (audio * 32768).astype(np.int16), hps.data.sampling_rate, 'PCM_16')
-    return audio_bytes.getvalue()
+    with tempfile.NamedTemporaryFile(suffix='.wav') as f:
+        sf.write(f.name, (audio * 32768).astype(np.int16), hps.data.sampling_rate)
+        f.flush()
+        return f.read()
 
 
 # --------------------------------
