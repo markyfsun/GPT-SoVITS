@@ -46,6 +46,7 @@ class Config:
         self.sovits_path = sovits_path
         self.gpt_path = gpt_path
         self.is_half = is_half
+        self.wav_root = wav_root
 
         self.cnhubert_path = cnhubert_path
         self.bert_path = bert_path
