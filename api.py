@@ -116,37 +116,37 @@ RESP: 无
 
 """
 
-import soundfile as sf
-from io import BytesIO
+import LangSegment
 import argparse
+import librosa
 import logging
+import numpy as np
 import os
 import re
 import signal
+import soundfile as sf
+import soundfile as sf
 import subprocess
 import sys
-from io import BytesIO
-from time import time as ttime
-
-import LangSegment
-import librosa
-import numpy as np
-import soundfile as sf
+import tempfile
 import torch
 import torch.nn.functional as F
 import uvicorn
+from AR.models.t2s_lightning_module import Text2SemanticLightningModule
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse, Response
-from transformers import AutoModelForMaskedLM, AutoTokenizer
-
-import config as global_config
-from AR.models.t2s_lightning_module import Text2SemanticLightningModule
 from feature_extractor import cnhubert
+from io import BytesIO
+from io import BytesIO
 from module.mel_processing import spectrogram_torch
 from module.models import SynthesizerTrn
 from my_utils import load_audio
 from text import cleaned_text_to_sequence
 from text.cleaner import clean_text
+from time import time as ttime
+from transformers import AutoModelForMaskedLM, AutoTokenizer
+
+import config as global_config
 
 
 class DefaultRefer:
@@ -869,13 +869,19 @@ async def tts_endpoint(
 
 @app.get("/vc")
 async def vc_endpoint(
+        prompt_wav: byte,
         refer_wav_path: str = None,
         prompt_text: str = None,
         prompt_language: str = None,
-        prompt_wav: str = None,
         noise_scale: float = 0.5,
 ):
-    return Response(vc_main(refer_wav_path, prompt_text, prompt_language, prompt_wav, noise_scale), media_type="audio/wav")
+    with tempfile.NamedTemporaryFile(suffix=".wav") as f:
+        f.write(prompt_wav)
+        f.flush()
+        if not refer_wav_path.startswith('/'):
+            refer_wav_path = os.path.join(g_config.wav_root, refer_wav_path)
+        return Response(vc_main(refer_wav_path, prompt_text, prompt_language, f.name, noise_scale),
+                        media_type="audio/wav")
 if __name__ == "__main__":
     uvicorn.run(app, host=host, port=port, workers=1)
 
