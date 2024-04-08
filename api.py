@@ -652,7 +652,7 @@ def vc_main(wav_path, text, language, prompt_wav, noise_scale=0.5):
 
     spec = get_spepc(hps, prompt_wav)
     codes = get_code_from_wav(wav_path)[None, None]  # 必须是 3D, [n_q, B, T]
-    ge = vq_model.ref_enc(spec)  # [B, D, T/1]
+    ge = vq_model.ref_enc(spec.half().to('cuda'))  # [B, D, T/1]
     quantized = vq_model.quantizer.decode(codes)  # [B, D, T]
     if hps.model.semantic_frame_rate == "25hz":
         quantized = F.interpolate(
