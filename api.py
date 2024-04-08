@@ -658,15 +658,9 @@ def vc_main(wav_path, text, language, prompt_wav, noise_scale=0.5):
         quantized = F.interpolate(
             quantized, size=int(quantized.shape[-1] * 2), mode="nearest"
         )
-    quantized = quantized.half().to('cuda')
-    phones_tensor = torch.LongTensor(phones).half().to('cuda')
-    quantized_shape_tensor = torch.LongTensor([quantized.shape[-1]]).half().to('cuda')
-    phones_length_tensor = torch.LongTensor([len(phones)]).half().to('cuda')
-    ge = ge.half().to('cuda')
-
     _, m_p, logs_p, y_mask = vq_model.enc_p(
-        quantized, quantized_shape_tensor,
-        phones_tensor[None], phones_length_tensor, ge
+        quantized, torch.LongTensor([quantized.shape[-1]]),
+        torch.LongTensor(phones)[None], torch.LongTensor([len(phones)]), ge
     )
     z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
     z = vq_model.flow(z_p, y_mask, g=ge, reverse=True)
