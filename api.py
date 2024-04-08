@@ -137,7 +137,7 @@ import torch
 import torch.nn.functional as F
 import uvicorn
 from AR.models.t2s_lightning_module import Text2SemanticLightningModule
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, File, UploadFile
 from fastapi.responses import StreamingResponse, JSONResponse, Response
 from feature_extractor import cnhubert
 from io import BytesIO
@@ -149,7 +149,6 @@ from text import cleaned_text_to_sequence
 from text.cleaner import clean_text
 from time import time as ttime
 from transformers import AutoModelForMaskedLM, AutoTokenizer
-
 import config as global_config
 
 
