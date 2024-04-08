@@ -115,13 +115,18 @@ POST:
 RESP: 无
 
 """
+import os
+
+now_dir = os.getcwd()
+sys.path.append(now_dir)
+sys.path.append("%s/GPT_SoVITS" % (now_dir))
 
 import LangSegment
 import argparse
 import librosa
 import logging
 import numpy as np
-import os
+
 import re
 import signal
 import soundfile as sf
@@ -674,9 +679,7 @@ def vc_main(wav_path, text, language, prompt_wav, noise_scale=0.5):
 # --------------------------------
 # 初始化部分
 # --------------------------------
-now_dir = os.getcwd()
-sys.path.append(now_dir)
-sys.path.append("%s/GPT_SoVITS" % (now_dir))
+
 
 dict_language = {
     "中文": "all_zh",
