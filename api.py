@@ -116,32 +116,37 @@ RESP: 无
 
 """
 
-
-import argparse
-import os,re
-import sys
-import signal
-import LangSegment
-from time import time as ttime
-import torch
-import librosa
 import soundfile as sf
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import StreamingResponse, JSONResponse
-import uvicorn
-from transformers import AutoModelForMaskedLM, AutoTokenizer
-import numpy as np
-from feature_extractor import cnhubert
 from io import BytesIO
-from module.models import SynthesizerTrn
+import argparse
+import logging
+import os
+import re
+import signal
+import subprocess
+import sys
+from io import BytesIO
+from time import time as ttime
+
+import LangSegment
+import librosa
+import numpy as np
+import soundfile as sf
+import torch
+import torch.nn.functional as F
+import uvicorn
+from fastapi import FastAPI, Request
+from fastapi.responses import StreamingResponse, JSONResponse, Response
+from transformers import AutoModelForMaskedLM, AutoTokenizer
+
+import config as global_config
 from AR.models.t2s_lightning_module import Text2SemanticLightningModule
+from feature_extractor import cnhubert
+from module.mel_processing import spectrogram_torch
+from module.models import SynthesizerTrn
+from my_utils import load_audio
 from text import cleaned_text_to_sequence
 from text.cleaner import clean_text
-from module.mel_processing import spectrogram_torch
-from my_utils import load_audio
-import config as global_config
-import logging
-import subprocess
 
 
 class DefaultRefer:
@@ -531,6 +536,137 @@ def handle(refer_wav_path, prompt_text, prompt_language, text, text_language, cu
     return StreamingResponse(get_tts_wav(refer_wav_path, prompt_text, prompt_language, text, text_language), media_type="audio/"+media_type)
 
 
+def splite_en_inf(sentence, language):
+    pattern = re.compile(r'[a-zA-Z ]+')
+    textlist = []
+    langlist = []
+    pos = 0
+    for match in pattern.finditer(sentence):
+        start, end = match.span()
+        if start > pos:
+            textlist.append(sentence[pos:start])
+            langlist.append(language)
+        textlist.append(sentence[start:end])
+        langlist.append("en")
+        pos = end
+    if pos < len(sentence):
+        textlist.append(sentence[pos:])
+        langlist.append(language)
+    # Merge punctuation into previous word
+    for i in range(len(textlist) - 1, 0, -1):
+        if re.match(r'^[\W_]+$', textlist[i]):
+            textlist[i - 1] += textlist[i]
+            del textlist[i]
+            del langlist[i]
+    # Merge consecutive words with the same language tag
+    i = 0
+    while i < len(langlist) - 1:
+        if langlist[i] == langlist[i + 1]:
+            textlist[i] += textlist[i + 1]
+            del textlist[i + 1]
+            del langlist[i + 1]
+        else:
+            i += 1
+
+    return textlist, langlist
+
+
+def nonen_clean_text_inf(text, language):
+    if (language != "auto"):
+        textlist, langlist = splite_en_inf(text, language)
+    else:
+        textlist = []
+        langlist = []
+        for tmp in LangSegment.getTexts(text):
+            langlist.append(tmp["lang"])
+            textlist.append(tmp["text"])
+    phones_list = []
+    word2ph_list = []
+    norm_text_list = []
+    for i in range(len(textlist)):
+        lang = langlist[i]
+        phones, word2ph, norm_text = clean_text_inf(textlist[i], lang)
+        phones_list.append(phones)
+        if lang == "zh":
+            word2ph_list.append(word2ph)
+        norm_text_list.append(norm_text)
+    print(word2ph_list)
+    phones = sum(phones_list, [])
+    word2ph = sum(word2ph_list, [])
+    norm_text = ' '.join(norm_text_list)
+
+    return phones, word2ph, norm_text
+
+
+def get_cleaned_text_final(text, language):
+    if language in {"en", "all_zh", "all_ja"}:
+        phones, word2ph, norm_text = clean_text_inf(text, language)
+    elif language in {"zh", "ja", "auto"}:
+        phones, word2ph, norm_text = nonen_clean_text_inf(text, language)
+    return phones, word2ph, norm_text
+
+
+@torch.no_grad()
+def get_code_from_ssl(ssl):
+    ssl = vq_model.ssl_proj(ssl)
+    quantized, codes, commit_loss, quantized_list = vq_model.quantizer(ssl)
+    # print(codes.shape, codes.dtype)  # [n_q, B, T]
+    return codes.transpose(0, 1)  # [B, n_q, T]
+
+
+@torch.no_grad()
+def get_code_from_wav(wav_path):
+    wav16k, sr = librosa.load(wav_path, sr=16000)
+    wav16k = torch.from_numpy(wav16k)
+    if is_half == True:
+        wav16k = wav16k.half().to(device)
+    else:
+        wav16k = wav16k.to(device)
+    ssl_content = ssl_model.model(wav16k.unsqueeze(0))[
+        "last_hidden_state"
+    ].transpose(
+        1, 2
+    )  # .float()
+    codes = get_code_from_ssl(ssl_content)  # [B, n_q, T]
+
+    prompt_semantic = codes[0, 0]
+    return prompt_semantic
+
+
+@torch.no_grad()
+def vc_main(wav_path, text, language, prompt_wav, noise_scale=0.5):
+    """ Voice Conversion
+    wav_path: 待变声的源音频
+    text: 对应文本
+    language: 对应语言
+    prompt_wav: 目标人声
+    """
+    language = dict_language[language]
+
+    phones, word2ph, norm_text = get_cleaned_text_final(text, language)
+
+    spec = get_spepc(hps, prompt_wav)
+    codes = get_code_from_wav(wav_path)[None, None]  # 必须是 3D, [n_q, B, T]
+    ge = vq_model.ref_enc(spec)  # [B, D, T/1]
+    quantized = vq_model.quantizer.decode(codes)  # [B, D, T]
+    if hps.model.semantic_frame_rate == "25hz":
+        quantized = F.interpolate(
+            quantized, size=int(quantized.shape[-1] * 2), mode="nearest"
+        )
+    _, m_p, logs_p, y_mask = vq_model.enc_p(
+        quantized, torch.LongTensor([quantized.shape[-1]]),
+        torch.LongTensor(phones)[None], torch.LongTensor([len(phones)]), ge
+    )
+    z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
+    z = vq_model.flow(z_p, y_mask, g=ge, reverse=True)
+    o = vq_model.dec((z * y_mask)[:, :, :], g=ge)  # [B, D=1, T], torch.float32 (-1, 1)
+    audio = o.detach().cpu().numpy()[0, 0]
+    max_audio = np.abs(audio).max()  # 简单防止16bit爆音
+    if max_audio > 1:
+        audio /= max_audio
+    audio_bytes = BytesIO()
+    sf.write(audio_bytes, (audio * 32768).astype(np.int16), hps.data.sampling_rate, 'PCM_16')
+    return audio_bytes.getvalue()
 
 
 # --------------------------------
@@ -729,6 +865,15 @@ async def tts_endpoint(
 ):
     return handle(refer_wav_path, prompt_text, prompt_language, text, text_language, cut_punc)
 
-
+@app.get("/vc")
+async def vc_endpoint(
+        refer_wav_path: str = None,
+        prompt_text: str = None,
+        prompt_language: str = None,
+        prompt_wav: str = None,
+        noise_scale: float = 0.5,
+):
+    return Response(vc_main(refer_wav_path, prompt_text, prompt_language, prompt_wav, noise_scale), media_type="audio/wav")
 if __name__ == "__main__":
     uvicorn.run(app, host=host, port=port, workers=1)
+
