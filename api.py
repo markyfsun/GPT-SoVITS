@@ -408,6 +408,8 @@ def only_punc(text):
 
 
 def get_tts_wav(ref_wav_path, prompt_text, prompt_language, text, text_language):
+    if not ref_wav_path.startswith('/'):
+        ref_wav_path = os.path.join(g_config.wav_root, ref_wav_path)
     t0 = ttime()
     prompt_text = prompt_text.strip("\n")
     prompt_language, text = prompt_language, text.strip("\n")

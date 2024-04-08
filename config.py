@@ -12,15 +12,13 @@ is_share= True if is_share_str.lower() == 'true' else False
 
 cnhubert_path = "GPT_SoVITS/pretrained_models/chinese-hubert-base"
 bert_path = "GPT_SoVITS/pretrained_models/chinese-roberta-wwm-ext-large"
-pretrained_sovits_path = "GPT_SoVITS/pretrained_models/s2G488k.pth"
-pretrained_gpt_path = "GPT_SoVITS/pretrained_models/s1bert25hz-2kh-longer-epoch=68e-step=50232.ckpt"
+pretrained_sovits_path = os.environ.get("SOVITS_MODEL_PATH","GPT_SoVITS/pretrained_models/s2G488k.pth")
+pretrained_gpt_path = os.environ.get("GPT_MODEL_PATH","GPT_SoVITS/pretrained_models/s1bert25hz-2kh-longer-epoch=68e-step=50232.ckpt")
 
 exp_root = "logs"
 python_exec = sys.executable or "python"
-if torch.cuda.is_available():
-    infer_device = "cuda"
-else:
-    infer_device = "cpu"
+infer_device = "cuda"
+wav_root = "/ref"
 
 webui_port_main = 9874
 webui_port_uvr5 = 9873
