@@ -116,7 +116,7 @@ RESP: 无
 
 """
 import os
-
+import sys
 now_dir = os.getcwd()
 sys.path.append(now_dir)
 sys.path.append("%s/GPT_SoVITS" % (now_dir))
@@ -132,7 +132,6 @@ import signal
 import soundfile as sf
 import soundfile as sf
 import subprocess
-import sys
 import tempfile
 import torch
 import torch.nn.functional as F
