@@ -872,17 +872,17 @@ async def tts_endpoint(
 @app.post("/vc")
 async def vc_endpoint(
         prompt_wav: UploadFile = File(...),
-        refer_wav_path: str = None,
+        refer_wav: UploadFile = File(...),
         prompt_text: str = None,
-        prompt_language: str = None,
+        prompt_language: str = 'auto',
         noise_scale: float = 0.5,
 ):
-    with tempfile.NamedTemporaryFile(suffix=".wav") as f:
-        f.write(await prompt_wav.read())
-        f.flush()
-        if not refer_wav_path.startswith('/'):
-            refer_wav_path = os.path.join(g_config.wav_root, refer_wav_path)
-        return Response(vc_main(refer_wav_path, prompt_text, prompt_language, f.name, noise_scale),
+    with tempfile.NamedTemporaryFile(suffix=".wav"), tempfile.NamedTemporaryFile(suffix=".wav") as f1, f2:
+        f1.write(await prompt_wav.read())
+        f1.flush()
+        f2.write(await refer_wav.read())
+        f2.flush()
+        return Response(vc_main(f2.name, prompt_text, prompt_language, f1.name, noise_scale),
                         media_type="audio/wav")
 if __name__ == "__main__":
     uvicorn.run(app, host=host, port=port, workers=1)
