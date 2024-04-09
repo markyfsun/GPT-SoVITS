@@ -877,7 +877,7 @@ async def vc_endpoint(
         prompt_language: str = 'auto',
         noise_scale: float = 0.5,
 ):
-    with tempfile.NamedTemporaryFile(suffix=".wav"), tempfile.NamedTemporaryFile(suffix=".wav") as f1, f2:
+    with tempfile.NamedTemporaryFile(suffix=".wav") as f1, tempfile.NamedTemporaryFile(suffix=".wav") as f2:
         f1.write(await prompt_wav.read())
         f1.flush()
         f2.write(await refer_wav.read())
